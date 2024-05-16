@@ -1,0 +1,58 @@
+# Install diffusers 
+!git clone https://github.com/ShivamShrirao/diffusers
+
+%cd diffusers/
+!pip install -e .
+
+# For GPU efficiency
+!pip install bitsandbytes
+
+# Install dreambooth requirements
+%cd /content/diffusers/examples/dreambooth/
+!pip install -r requirements.txt
+
+# Accelerate environment
+!accelerate config default
+
+#Which GPU can we use?
+!nvidia-smi
+
+#Time to upload the samples
+
+%cd /content
+print("Make sure you put the images into the newly created directory!")
+!mkdir images
+
+#Fine-tuning
+
+%cd /content
+%env MODEL_NAME=runwayml/stable-diffusion-v1-5
+%env INSTANCE_DIR=/content/images/
+%env OUTPUT_DIR=outputs/
+%env CLASS_DIR=/content/diffusers/examples/dreambooth/person/
+
+
+!accelerate launch diffusers/examples/dreambooth/train_dreambooth.py \
+    --pretrained_model_name_or_path=$MODEL_NAME  \
+    --pretrained_vae_name_or_path="stabilityai/sd-vae-ft-mse" \
+    --instance_data_dir=$INSTANCE_DIR \
+    --output_dir=$OUTPUT_DIR \
+    --class_data_dir=$CLASS_DIR \
+    --with_prior_preservation --prior_loss_weight=1.0 \
+    --instance_prompt="photo of zwx person" \
+    --class_prompt="photo of person" \
+    --resolution=512 \
+    --train_batch_size=1 \
+    --gradient_accumulation_steps=1 --gradient_checkpointing \
+    --use_8bit_adam \
+    --mixed_precision="fp16" \
+    --learning_rate=1e-6 \
+    --lr_scheduler="constant" \
+    --lr_warmup_steps=0 \
+    --num_class_images=300 \
+    --max_train_steps=1000
+#Generation
+# Ugly hack, I'm too stupid to import StableDiffusionPipeline from local installation
+# If you manage to fix this, let me know :) 
+!pip uninstall diffusers -y
+!pip install diffusers
